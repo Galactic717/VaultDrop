@@ -1,0 +1,15 @@
+{
+  "name": "vaultdrop-app",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": {
+    "tauri": "tauri",
+    "test": "node --test tests/model.test.js",
+    "test:ui": "node tests/ui.test.cjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "playwright": "1.62.1"
+  },
+  "type": "module"
+}

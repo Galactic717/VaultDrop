@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>VaultDrop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="#" aria-label="VaultDrop"><span class="brand-symbol" aria-hidden="true">V<span>↓</span></span><span>VaultDrop<span class="brand-caption" data-i18n="ui.brand_caption"></span></span></a>
+    <div class="nav-label" data-i18n="ui.workspace"></div>
+    <nav class="tabs" role="tablist" aria-orientation="vertical" aria-label="VaultDrop">
+      <button role="tab" id="tab-copy" aria-controls="pane-copy" aria-selected="true"><span class="nav-icon" aria-hidden="true">↗</span><span data-i18n="ui.tab.copy"></span></button>
+      <button role="tab" id="tab-verify" aria-controls="pane-verify" aria-selected="false" tabindex="-1"><span class="nav-icon" aria-hidden="true">✓</span><span data-i18n="ui.tab.verify"></span></button>
+    </nav>
+    <div class="sidebar-note"><span class="status-dot"></span><span data-i18n="ui.offline"></span><p data-i18n="ui.local_note"></p></div>
+    <div class="sidebar-bottom"><label for="lang" data-i18n="ui.language"></label><select id="lang"></select><div class="version">WINDOWS <span>v0.2.0</span></div></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><span id="breadcrumb" data-i18n="ui.tab.copy"></span><span class="topbar-status"><span class="status-dot"></span><span id="app-status" data-i18n="ui.ready"></span></span></header>
+    <main>
+      <div id="global-error" class="notice error" role="alert" hidden></div>
+      <div id="preview-note" class="notice" hidden data-i18n="ui.preview"></div>
+      <div id="home">
+        <section id="pane-copy" role="tabpanel" aria-labelledby="tab-copy">
+          <div class="page-heading"><div class="eyebrow" data-i18n="ui.copy_eyebrow"></div><h1 data-i18n="ui.copy_title"></h1><p data-i18n="ui.copy_intro"></p></div>
+          <div class="copy-layout">
+            <div class="steps">
+              <section class="step source-step">
+                <div class="step-head"><div class="step-heading"><span class="step-number">01</span><h2 data-i18n="ui.step.source"></h2></div><span class="step-tag" data-i18n="ui.source_tag"></span></div>
+                <button id="pick-source" class="source-picker" type="button"><span class="folder-icon" aria-hidden="true"></span><span class="source-content"><strong id="source-name" data-i18n="ui.pick_folder"></strong><span id="source-path" class="path"></span></span><span class="pick-arrow" aria-hidden="true">↗</span></button>
+                <div class="source-footer"><span id="source-stats" class="muted small" aria-live="polite"></span><span id="source-change" class="muted small" data-i18n="ui.click_change" hidden></span></div>
+              </section>
+              <section class="step">
+                <div class="step-head"><div class="step-heading"><span class="step-number">02</span><h2 data-i18n="ui.step.dest"></h2></div><button id="refresh-drives" type="button" class="link"><span aria-hidden="true">↻ </span><span data-i18n="ui.refresh"></span></button></div>
+                <p class="section-hint" data-i18n="ui.step.dest_hint"></p>
+                <div id="drives" class="drives" aria-live="polite"></div>
+                <button id="pick-dest" type="button" class="other-folder"><span aria-hidden="true">＋ </span><span data-i18n="ui.other_folder"></span></button>
+              </section>
+            </div>
+            <aside class="plan-card">
+              <div class="plan-heading"><span class="eyebrow" data-i18n="ui.plan"></span><span class="plan-dot" aria-hidden="true"></span></div>
+              <h2 id="plan-title" data-i18n="ui.plan_empty"></h2>
+              <dl class="plan-metrics"><div><dt data-i18n="ui.summary.files"></dt><dd id="plan-files">—</dd></div><div><dt data-i18n="ui.summary.size"></dt><dd id="plan-size">—</dd></div><div><dt data-i18n="ui.summary.copies"></dt><dd id="plan-copies">0 / 2</dd></div></dl>
+              <div id="dest-box" hidden><p class="destination-label" data-i18n="ui.dest_title"></p><ul id="dest-list" class="dest-list"></ul></div>
+              <div class="verification-note"><span class="shield-icon" aria-hidden="true">✓</span><div><strong data-i18n="ui.auto_verify"></strong><p data-i18n="ui.auto_verify_hint"></p></div></div>
+              <p id="copy-hint" class="hint" role="status"></p>
+              <button id="start" type="button" class="primary start-button" disabled><span data-i18n="ui.start"></span><span aria-hidden="true">→</span></button>
+              <p class="originals-note" data-i18n="ui.never_changes"></p>
+            </aside>
+          </div>
+          <div class="bottom-note"><span aria-hidden="true">◎</span><span data-i18n="ui.two_copies_note"></span></div>
+        </section>
+        <section id="pane-verify" role="tabpanel" aria-labelledby="tab-verify" hidden>
+          <div class="page-heading"><div class="eyebrow" data-i18n="ui.verify_eyebrow"></div><h1 data-i18n="ui.verify_title"></h1><p data-i18n="ui.verify_intro"></p></div>
+          <section class="step"><div class="step-head"><h2 data-i18n="ui.found"></h2><button id="refresh-backups" type="button" class="link" data-i18n="ui.refresh"></button></div><div id="backups" class="backups" aria-live="polite"></div><button id="pick-backup" type="button" class="secondary" data-i18n="ui.pick_backup"></button></section>
+        </section>
+      </div>
+      <section id="run" hidden aria-live="polite">
+        <div class="page-heading"><div class="eyebrow" data-i18n="ui.run_eyebrow"></div><h1 id="run-heading" data-i18n="ui.copy_title"></h1><p data-i18n="ui.never_changes"></p></div>
+        <div id="progress" class="step progress-card">
+          <div class="step-head"><span class="working-indicator" aria-hidden="true"></span><span id="progress-percent">0%</span></div>
+          <h2 id="run-title"></h2><progress id="bar" max="1" value="0" aria-label="Progress"></progress><p id="progress-main" class="big-text"></p><p id="progress-sub" class="muted"></p><p id="progress-file" class="muted small file-path"></p>
+          <div class="progress-bottom"><span data-i18n="ui.awake"></span><button id="stop-run" class="secondary" type="button" data-i18n="ui.stop_run"></button></div>
+        </div>
+        <div id="result" hidden><div id="result-card" class="card"><div class="mark" aria-hidden="true"></div><div><h2 id="result-title"></h2><p id="result-text"></p></div></div><dl id="summary" class="summary"></dl><div id="problems"></div><div class="actions"><button id="open-report" type="button" class="secondary" data-i18n="ui.open_report"></button><button id="open-folder" type="button" class="secondary" data-i18n="ui.open_folder"></button><button id="done" type="button" class="primary" data-i18n="ui.done"></button></div></div>
+        <details><summary data-i18n="ui.details"></summary><pre id="log"></pre></details>
+      </section>
+      <footer><span data-i18n="ui.footer"></span><span>VaultDrop <span class="footer-separator">/</span> 0.2</span></footer>
+    </main>
+  </div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+.venv/
+.tmp/
+.cache/
+dist/
+__pycache__/
+*.egg-info/
+src-app/node_modules/
+src-app/src-tauri/target/
+src-app/src-tauri/gen/
+src-app/src-tauri/binaries/

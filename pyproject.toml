@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vaultdrop"
+version = "0.2.0"
+description = "Офлайн верифікований бекап для Windows"
+requires-python = ">=3.12"
+dependencies = ["xxhash>=3"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pyinstaller"]
+
+[project.scripts]
+vaultdrop = "vaultdrop.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src-core"]
+
+[tool.setuptools.package-data]
+vaultdrop = ["locales/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src-core"]
+# Тимчасові дані тестів — на D: у проекті, не в C:\...\Temp.
+addopts = "--basetemp=.tmp/pytest -p no:cacheprovider"
