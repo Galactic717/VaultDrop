@@ -7,13 +7,13 @@ const fs=require('node:fs');const path=require('node:path');const assert=require
  const browser=await chromium.connectOverCDP(process.env.VAULTDROP_CDP||'http://127.0.0.1:19371');
  try{
   const page=browser.contexts()[0].pages().find(p=>p.url().includes('tauri.localhost'));
-  await page.evaluate(({source,dest})=>{localStorage.setItem('vaultdrop.source',JSON.stringify(source));localStorage.setItem('vaultdrop.dests',JSON.stringify([{custom:dest}]));localStorage.setItem('vaultdrop.lang','"uk"');},{source,dest});
+  await page.evaluate(({source,dest})=>{localStorage.setItem('vaultdrop.source',JSON.stringify(source));localStorage.setItem('vaultdrop.dests',JSON.stringify([{custom:dest}]));localStorage.setItem('vaultdrop.lang','"en"');},{source,dest});
   await page.reload();await page.waitForFunction(()=>document.querySelector('#start')?.disabled===false);
   await page.evaluate(()=>{const real=window.__TAURI__.core.invoke;window.__TAURI__={...window.__TAURI__,core:{...window.__TAURI__.core,invoke:(cmd,args)=>cmd==='ask'?Promise.resolve(true):real(cmd,args)}};});
   await page.click('#start');
   const limit=Date.now()+30000;while(!fs.existsSync(path.join(dest,'.vaultdrop.running'))){if(Date.now()>limit)throw Error('Worker never started');await new Promise(r=>setTimeout(r,10));}
   await page.click('#stop-run');await page.waitForSelector('#result-card.warn',{timeout:30000});
-  assert((await page.locator('#result-title').textContent()).includes('зупинено'));
+  assert((await page.locator('#result-title').textContent()).includes('stopped'));
   assert(fs.existsSync(path.join(dest,'.vaultdrop.running')));
   await page.click('#done');await page.click('#start');await page.waitForSelector('#result-card.ok',{timeout:60000});
   const report=JSON.parse(fs.readFileSync(path.join(dest,'vaultdrop-report.json')));

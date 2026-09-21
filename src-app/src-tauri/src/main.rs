@@ -1,5 +1,5 @@
-// Один екран поверх CLI: копіювання й перевірку робить vaultdrop.exe (--json), події йдуть у вікно.
-// Диски, розмір папки й пошук копій Rust рахує сам: це миттєво і не потребує запуску CLI.
+// A single window over the CLI: vaultdrop.exe (--json) copies and verifies, its events are streamed to the window.
+// Drives, folder size and backup discovery are computed in Rust: instant, no CLI launch needed.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::collections::HashSet;
@@ -11,9 +11,6 @@ use serde::Serialize;
 use tauri::AppHandle;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
-use windows_sys::Win32::Globalization::{
-    GetUserDefaultLocaleName, GetUserDefaultUILanguage, LCIDToLocaleName,
-};
 use windows_sys::Win32::Storage::FileSystem::{
     CreateFileW, GetDiskFreeSpaceExW, GetDriveTypeW, GetLogicalDrives, GetVolumeInformationW,
     FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
@@ -29,7 +26,7 @@ const DRIVE_REMOVABLE: u32 = 2;
 const DRIVE_FIXED: u32 = 3;
 const BUS_TYPE_USB: i32 = 7; // STORAGE_BUS_TYPE::BusTypeUsb
 
-/// Переклади вшиті в exe з тих самих файлів, що читає ядро на Python. Нова мова = новий рядок тут.
+/// Translations are embedded in the exe from the same files the Python core reads. New language = one new line here.
 const LOCALES: &[(&str, &str)] = &[
     (
         "de",
@@ -70,7 +67,7 @@ struct Drive {
     usb: bool,
     removable: bool,
     system: bool,
-    /// Номер фізичного диска: два розділи одного SSD мають однаковий — копія між ними не рятує.
+    /// Physical disk number: two partitions of one SSD share it, so a copy between them protects nothing.
     disk: Option<u32>,
 }
 
@@ -113,19 +110,7 @@ fn locales() -> Vec<(&'static str, &'static str)> {
     LOCALES.to_vec()
 }
 
-/// Мова інтерфейсу Windows і регіональний формат, напр. ["en-US", "uk-UA"].
-#[tauri::command]
-fn system_langs() -> Vec<String> {
-    let mut ui = [0u16; 85];
-    let mut region = [0u16; 85];
-    unsafe {
-        LCIDToLocaleName(GetUserDefaultUILanguage() as u32, ui.as_mut_ptr(), 85, 0);
-        GetUserDefaultLocaleName(region.as_mut_ptr(), 85);
-    }
-    vec![from_wide(&ui), from_wide(&region)]
-}
-
-/// Бітова маска літер дисків: дешево опитувати, щоб помітити встромлену флешку.
+/// Bit mask of drive letters: cheap to poll, so a newly plugged-in drive is noticed.
 #[tauri::command]
 fn drive_mask() -> u32 {
     unsafe { GetLogicalDrives() }
@@ -168,7 +153,7 @@ fn enumerate_drives() -> Vec<Drive> {
                 )
             };
             if ok == 0 {
-                return None; // порожній кардрідер або том без файлової системи
+                return None; // empty card reader or a volume without a file system
             }
             let (mut free, mut total) = (0u64, 0u64);
             unsafe { GetDiskFreeSpaceExW(w.as_ptr(), &mut free, &mut total, null_mut()) };
@@ -188,7 +173,7 @@ fn enumerate_drives() -> Vec<Drive> {
         .collect()
 }
 
-/// Шина (USB чи ні) і номер фізичного диска. Доступ 0 — прав адміна не треба.
+/// Bus type (USB or not) and physical disk number. Access mask 0, so no admin rights are needed.
 fn device_info(letter: char) -> (bool, Option<u32>) {
     let path = wide(&format!("\\\\.\\{letter}:"));
     let handle = unsafe {
@@ -245,7 +230,7 @@ fn device_info(letter: char) -> (bool, Option<u32>) {
     (usb, disk)
 }
 
-/// Кількість і обсяг файлів у папці — щоб людина бачила, чи влізе на флешку.
+/// File count and total size of a folder, so the user can see whether it fits on the drive.
 #[tauri::command]
 async fn folder_stats(path: String) -> Result<Stats, String> {
     tauri::async_runtime::spawn_blocking(move || scan_folder(path))
@@ -315,7 +300,7 @@ fn inspect_folder(path: String) -> FolderInfo {
     }
 }
 
-/// Копії VaultDrop: X:\VaultDrop Backups\* на кожному диску плюс папки, куди вже копіювали з цього комп'ютера.
+/// VaultDrop backups: X:\VaultDrop Backups\* on every drive plus folders this computer has already backed up to.
 #[tauri::command]
 async fn find_backups(extra: Vec<String>) -> Result<Vec<Backup>, String> {
     tauri::async_runtime::spawn_blocking(move || discover_backups(extra))
@@ -358,7 +343,7 @@ fn discover_backups(extra: Vec<String>) -> Vec<Backup> {
         .collect()
 }
 
-/// Відкриває папку в Провіднику або файл звіту в програмі за замовчуванням.
+/// Opens a folder in Explorer or a report file in its default app.
 #[tauri::command]
 fn open_path(path: String) -> Result<(), String> {
     if !Path::new(&path).exists() {
@@ -380,7 +365,7 @@ async fn pick_folder(app: AppHandle) -> Option<String> {
         .map(|p| p.display().to_string())
 }
 
-/// Системне вікно-попередження з перекладеними кнопками. true — людина натиснула ok.
+/// Native warning dialog with translated buttons. Returns true if the user pressed OK.
 #[tauri::command]
 async fn ask(app: AppHandle, title: String, message: String, ok: String, cancel: String) -> bool {
     app.dialog()
@@ -397,7 +382,6 @@ fn main() {
         .manage(Running::default())
         .invoke_handler(tauri::generate_handler![
             locales,
-            system_langs,
             drive_mask,
             list_drives,
             folder_stats,

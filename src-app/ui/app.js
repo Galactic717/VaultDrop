@@ -4,9 +4,9 @@ import { invoke, listen, currentWindow } from "./bridge.js";
 import { resultVariant, progressFraction, pathKey } from "./model.js";
 const $ = (id) => document.getElementById(id);
 
-// Окреме ім'я, щоб копії не змішувались із чужою папкою «VaultDrop» у корені диска.
+// A distinct name, so backups never mix with an unrelated "VaultDrop" folder in the drive root.
 const BACKUP_DIR = "VaultDrop Backups";
-const MAX_LISTED = 8; // файлів на кожну причину в підсумку; повний список — у звіті
+const MAX_LISTED = 8; // files per reason in the summary; the full list is in the report
 const state = {
   lang: "en",
   locales: {},
@@ -16,14 +16,14 @@ const state = {
   statsToken: 0,
   drives: [],
   driveMask: -1,
-  dests: [], // { root: "E:\\" } — папка BACKUP_DIR\<назва> на диску, або { custom: "шлях" }
+  dests: [], // { root: "E:\\" } is BACKUP_DIR\<name> on that drive, or { custom: "path" }
   busy: false,
   starting: false,
   tab: "copy",
-  run: null, // поточний або останній запуск CLI
+  run: null, // current or last CLI run
 };
 
-// ---------- переклади й формати
+// ---------- translations and formats
 
 function t(key, vars = {}) {
   const text = state.strings[key] ?? key;
@@ -35,12 +35,7 @@ async function initLanguage() {
   const select = $("lang");
   for (const code of Object.keys(state.locales).sort()) select.add(new Option(state.locales[code]._name, code));
   let code = load("lang");
-  if (!state.locales[code]) {
-    // Англійський інтерфейс Windows часто стоїть за замовчуванням, а регіон людина обирає сама.
-    const [ui, region] = await invoke("system_langs");
-    const order = ui.toLowerCase().startsWith("en") ? [region, ui] : [ui, region];
-    code = order.map((name) => name.split("-")[0].toLowerCase()).find((c) => state.locales[c]) || "en";
-  }
+  if (!state.locales[code]) code = "en";
   select.value = code;
   select.addEventListener("change", () => setLanguage(select.value));
   setLanguage(code);
@@ -103,7 +98,7 @@ function load(key, fallback = null) {
 }
 
 function save(key, value) {
-  try { localStorage.setItem("vaultdrop." + key, JSON.stringify(value)); } catch { /* сховище недоступне */ }
+  try { localStorage.setItem("vaultdrop." + key, JSON.stringify(value)); } catch { /* storage unavailable */ }
 }
 
 function hint(text) {
@@ -131,7 +126,7 @@ function renderPlan() {
   document.querySelector(".plan-card").classList.toggle("ready", ready);
 }
 
-// ---------- що копіювати
+// ---------- what to copy
 
 function sourceName() {
   const parts = state.source.replace(/[\\/]+$/, "").split(/[\\/]/);
@@ -169,7 +164,7 @@ function renderSource() {
   renderPlan();
 }
 
-// ---------- куди копіювати
+// ---------- where to copy
 
 function driveOf(path) {
   const root = path.slice(0, 3).toUpperCase();
@@ -293,7 +288,7 @@ async function startCopy() {
   }
   save("history", [...new Set([...paths, ...load("history", [])])].slice(0, 20));
   const args = ["copy", "--source", state.source];
-  for (const path of paths) args.push("--to", path); // --to не ділить шлях за комою
+  for (const path of paths) args.push("--to", path); // --to does not split the path on commas
   await execute("copy", args, { dests: paths });
   } finally {
     state.starting = false;
@@ -301,7 +296,7 @@ async function startCopy() {
   }
 }
 
-// ---------- перевірка
+// ---------- verification
 
 async function renderBackups() {
   const box = $("backups");
@@ -339,7 +334,7 @@ function verify(path) {
   return execute("verify", ["verify", "--target", path], { target: path });
 }
 
-// ---------- запуск CLI і показ результату
+// ---------- running the CLI and showing the result
 
 const listenersReady = Promise.all([listen("cli-line", (e) => {
   let event;
@@ -513,7 +508,7 @@ function selectTab(name) {
   else if (state.source) action(() => setSource(state.source))();
 }
 
-// ---------- старт
+// ---------- startup
 
 $("tab-copy").addEventListener("click", () => selectTab("copy"));
 $("tab-verify").addEventListener("click", () => selectTab("verify"));

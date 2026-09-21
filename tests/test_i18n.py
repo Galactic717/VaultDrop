@@ -1,4 +1,4 @@
-"""Переклади: повнота кожної мови, збіг плейсхолдерів, мова звіту в копії."""
+"""Translations: completeness of every language, matching placeholders, report language in the backup."""
 
 import json
 import os
@@ -30,7 +30,7 @@ def test_at_least_six_languages():
 
 @pytest.mark.parametrize("code", LOCALES)
 def test_locale_is_complete(code):
-    """Кожна мова має всі ключі англійської, ті самі плейсхолдери й жодного зайвого ключа."""
+    """Every language has all English keys, the same placeholders and no extra keys."""
     base, other = strings("en"), strings(code)
     assert set(other) == set(base)
     for key, text in base.items():
@@ -39,14 +39,14 @@ def test_locale_is_complete(code):
 
 
 def test_app_embeds_every_locale():
-    """Інтерфейс вшиває переклади в exe: кожен JSON має бути підключений у main.rs."""
+    """The UI embeds translations in the exe: every JSON must be included in main.rs."""
     with open(MAIN_RS, encoding="utf-8") as f:
         embedded = set(re.findall(r'locales/(\w+)\.json', f.read()))
     assert embedded == set(LOCALES)
 
 
-def test_detect_returns_supported_language():
-    assert i18n.detect() in LOCALES
+def test_default_language_is_english():
+    assert i18n.load() == "en"
 
 
 @pytest.mark.parametrize("code, verdict", [("uk", "МОЖНА ФОРМАТУВАТИ"), ("de", "SICHER ZU FORMATIEREN"),
@@ -57,7 +57,7 @@ def test_report_language(dirs, code, verdict):
     assert main(["copy", "--source", src, "--dest", d1, "--lang", code]) == 0
     report = read(d1, "vaultdrop-report.txt").decode("utf-8")
     assert verdict in report
-    assert json.loads(read(d1, "vaultdrop-report.json"))["verdict"] == "SAFE TO FORMAT"  # JSON не перекладається
+    assert json.loads(read(d1, "vaultdrop-report.json"))["verdict"] == "SAFE TO FORMAT"  # JSON is never translated
 
 
 def test_unknown_language_falls_back_to_english():

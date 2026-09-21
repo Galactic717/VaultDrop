@@ -23,10 +23,10 @@ Native tests connect to the packaged application's WebView2 in a dedicated test 
 
 Test directories, all under this project:
 
-- `.tmp/native-smoke-1789995338561`: three files, two destinations. Includes a zero-byte file and a binary file of 4 MiB + 73 bytes in a path containing Ukrainian characters and a comma. Both destinations matched the source bytes. Rechecking returned an intact result. Flipping one byte in a copied file produced a damaged result identifying the correct file. Source contents remained unchanged.
-- `.tmp/native-cancel-1789995343023`: a 64 MiB generated file. The actual process tree was stopped after the running marker appeared. The UI showed cancellation; the marker remained. Restart acquired the OS lock, recovered interrupted work, removed temporary files, verified the entire file, and removed the running marker.
+- `.tmp/native-smoke-1789998019087`: three files, two destinations. Includes a zero-byte file and a binary file of 4 MiB + 73 bytes in a path containing non-ASCII characters and a comma. Both destinations matched the source bytes. Rechecking returned an intact result. Flipping one byte in a copied file produced a damaged result identifying the correct file. Source contents remained unchanged.
+- `.tmp/native-cancel-1789998044563`: a 64 MiB generated file. The actual process tree was stopped after the running marker appeared. The UI showed cancellation; the marker remained. Restart acquired the OS lock, recovered interrupted work, removed temporary files, verified the entire file, and removed the running marker.
 
-The files in `D:\promin` were not used as test data and were not edited or deleted. The old README merely mentioned that path in a CLI example. Volume discovery reads Windows drive metadata; backup discovery looks in the conventional `VaultDrop Backups` directories and saved test history.
+Volume discovery reads Windows drive metadata; backup discovery looks in the conventional `VaultDrop Backups` directories and saved test history.
 
 Visual inspection covered setup, compact layout, progress, success, empty verification, and native damaged results. Screenshots are under `docs/screenshots`; names beginning `native-` show the real packaged app.
 
@@ -39,7 +39,7 @@ Visual inspection covered setup, compact layout, progress, success, empty verifi
 - `dist/vaultdrop.exe` — standalone CLI.
 - `dist/SHA256SUMS.txt` — hashes for the distribution files.
 
-The portable package intentionally uses different GUI and worker names: Windows treats `VaultDrop.exe` and `vaultdrop.exe` as the same filename. The packaged launch test caught and corrected this collision before delivery. The previous 0.1 installer was preserved.
+The portable package intentionally uses different GUI and worker names: Windows treats `VaultDrop.exe` and `vaultdrop.exe` as the same filename. The packaged launch test caught and corrected this collision before delivery.
 
 ## Reproducing tests
 

@@ -1,14 +1,14 @@
-> Історичний документ версії 0.1. Актуальний стан 0.2: [архітектура](ARCHITECTURE.md), [перевірки](VALIDATION.md), [обмеження](LIMITATIONS.md).
+> Historical document for version 0.1. Current state of 0.2: [architecture](ARCHITECTURE.md), [validation](VALIDATION.md), [limitations](LIMITATIONS.md).
 
-# SPEC VaultDrop MVP — заморожено 21.09.2026
-# Будується з нуля. Старі проекти — тільки контекст.
+# VaultDrop MVP spec — frozen 2026-09-21
+# Built from scratch. Earlier projects are context only.
 
-## 1. Сценарії
+## 1. Scenarios
 
-S1 Ingest: source dir -> dest1 (+dest2 опціонально) -> Start -> report + verdict.
-S2 Verify: target dir (колишній dest) -> Verify -> intact/changed/missing по файлах.
+S1 Ingest: source dir -> dest1 (+dest2 optional) -> Start -> report + verdict.
+S2 Verify: target dir (a former dest) -> Verify -> intact/changed/missing per file.
 
-## 2. Алгоритм copy (ядро з нуля)
+## 2. Copy algorithm (core written from scratch)
 
 ```
 for each file in walk(source):
@@ -26,15 +26,15 @@ write .vaultdrop.json + report.json + report.txt in each dest
 verdict = SAFE TO FORMAT if all files matched in all dests else FAIL
 ```
 
-Temp-файли після краху ігноруються при наступному запуску (маска `.vaultdrop-tmp-*`).
+Temp files left after a crash are ignored on the next run (mask `.vaultdrop-tmp-*`).
 
-## 3. Схема ledger `.vaultdrop.json`
+## 3. Ledger schema `.vaultdrop.json`
 
 ```json
 {
   "vaultdrop_version": "0.1.0",
   "created_at_utc": "2026-09-21T10:00:00Z",
-  "source_label": "D:\\promin",
+  "source_label": "D:\\Projects",
   "files": [
     {
       "rel_path": "docs/SPEC.md",
@@ -50,29 +50,29 @@ Temp-файли після краху ігноруються при наступ
 `report.json`: {total, ok, failed, skipped_locked, verdict}
 `incident.json`: [{rel_path, dest, reason: mismatch/locked/yanked/power, attempts}]
 
-## 4. Обробка відмов
+## 4. Failure handling
 
-- Висмикнули флешку: write/verify ловить OSError -> incident yanked -> FAIL для цих файлів, прогін продовжується, крашу немає.
-- Locked файл: skip + incident locked, не валить прогін.
-- 0 байт, кирилиця, пробіли, >260 символів через `\\?\`: підтримуються.
-- Файл змінився під час читання: 1 перечитування, інакше unstable.
-- Жодного видалення source. Жодного форматування dest кодом.
+- USB drive unplugged: write/verify catches OSError -> incident yanked -> FAIL for those files, the run continues, no crash.
+- Locked file: skip + incident locked, the run does not fail.
+- Zero-byte files, non-ASCII names, spaces, paths over 260 characters via `\\?\`: supported.
+- File changed while being read: one re-read, otherwise unstable.
+- The source is never deleted. The code never formats a destination.
 
-## 5. Стек і шляхи
+## 5. Stack and paths
 
-- Python 3.12 core, пакети: xxhash. CLI argparse.
-- Tauri UI викликає той самий CLI.
-- Все на D:\vaultdrop\. Кеші, venv теж D:. ASCII-шляхи.
-- Офлайн: запуск з вимкненим Wi-Fi повинен пройти.
+- Python 3.12 core, packages: xxhash. CLI with argparse.
+- The Tauri UI calls the same CLI.
+- Project, caches and venv on one drive. ASCII paths.
+- Offline: a run with Wi-Fi switched off must succeed.
 
-## 6. Фази
+## 6. Phases
 
-P0 spec (цей файл + MARKET) — без коду.
-P1 core copy+hash + 5 тестів.
-P2 verify+ledger + re-verify через зміну 1 байта.
-P3 CLI + Tauri 1 екран.
-P4 NSIS інсталер + README з гіфкою + реліз .exe.
+P0 spec (this file + market notes), no code.
+P1 core copy + hash + 5 tests.
+P2 verify + ledger + re-verify after changing one byte.
+P3 CLI + single-window Tauri UI.
+P4 NSIS installer + README with a GIF + .exe release.
 
-## 7. Non-goals v1
+## 7. Non-goals for v1
 
-Шифрування, стиснення, хмара, планувальник, дедуп, macOS/Linux, AI. Заборонено.
+Encryption, compression, cloud, scheduler, deduplication, macOS/Linux, AI. Out of scope.

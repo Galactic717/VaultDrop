@@ -1,8 +1,8 @@
-"""Алгоритм copy.
+"""The copy algorithm.
 
-Source читається один раз, ті самі байти йдуть у tmp кожного dest. Кожна копія перечитується з диска
-в обхід кешу Windows, і тільки при збігу xxh64 tmp атомарно стає фінальним файлом. Будь-яка відмова
-одного файла чи одного диска записується як інцидент, прогін іде далі.
+The source is read once and the same bytes go to a tmp file in every dest. Each copy is read back from disk
+bypassing the Windows cache, and only when xxh64 matches does tmp atomically become the final file. Any failure
+of a single file or a single drive is recorded as an incident and the run continues.
 """
 
 import json
@@ -23,7 +23,7 @@ from .winio import CHUNK, classify, hash_unbuffered, lp, volume_fs
 
 TMP_RE = re.compile(re.escape(TMP_PREFIX) + r"[0-9a-f]{16}")
 RESERVED_PREFIXES = (".vaultdrop", "vaultdrop-")
-# Службові об'єкти в корені диска: їх не бекаплять, і прочитати їх не можна.
+# System objects in a drive root: they are not backed up and cannot be read.
 SYSTEM_ROOT_NAMES = {"system volume information", "$recycle.bin", "pagefile.sys", "hiberfil.sys",
                      "swapfile.sys", "dumpstack.log.tmp"}
 FAT32_MAX_FILE = (1 << 32) - 1
@@ -38,13 +38,13 @@ class Dest:
     fs: str = ""
     alive: bool = True
     dead_reason: str = ""
-    entries: list = field(default_factory=list)  # записи ledger для файлів, що дійшли в цей dest
+    entries: list = field(default_factory=list)  # ledger entries for files that reached this dest
     ledger_written: bool = False
     reports_written: bool = False
 
 
 def run_copy(source: str, dests: list[str], emit=lambda event: None) -> dict:
-    """Копіює source у 1-2 dest і повертає звіт. VaultDropError — прогін не почався."""
+    """Copies source to 1-2 dests and returns the report. VaultDropError means the run did not start."""
     return _Copy(source, dests, emit).run()
 
 
@@ -53,7 +53,7 @@ def _open_tmp(path: str):
 
 
 def _sig(f) -> tuple:
-    """Розмір і mtime відкритого source: якщо змінились за час читання, копія може бути сумішшю версій."""
+    """Size and mtime of the open source file: if they changed while reading, the copy may mix versions."""
     st = os.fstat(f.fileno())
     return st.st_size, st.st_mtime_ns
 
@@ -64,7 +64,7 @@ class _Copy:
         self.dests = [Dest(os.path.abspath(d)) for d in dest_roots]
         self.emit = emit
         self.incidents = []
-        self.hashes = {}  # rel -> (size, xxh64) кожного прочитаного файла source
+        self.hashes = {}  # rel -> (size, xxh64) of every source file read
         self.interrupted = []
         self.files_done = 0
         self.current = ""
@@ -91,7 +91,7 @@ class _Copy:
             self.progress(0, force=self.files_done == len(files))
         return self.finish([rel for rel, _ in files], links, system, started)
 
-    # --- preflight: будь-яка відмова тут — VaultDropError, файлів у dest ще нема
+    # --- preflight: any failure here is a VaultDropError; nothing is in dest yet
 
     def preflight(self):
         if not 1 <= len(self.dests) <= 2:
@@ -142,7 +142,7 @@ class _Copy:
         for d in self.dests:
             marker = contained_path(lp(d.root), RUNNING)
             try:
-                if os.path.exists(marker):  # минулий запуск обірвався: живлення, крах, висмикнутий диск
+                if os.path.exists(marker):  # the previous run was interrupted: power loss, crash, unplugged drive
                     self.interrupted.append(d.root)
                     _remove_stale_tmps(lp(d.root))
                 with open(marker, "wb") as f:
@@ -179,10 +179,10 @@ class _Copy:
         files.sort()
         return files, sorted(dirs), sorted(links), system
 
-    # --- копіювання
+    # --- copying
 
     def make_dirs(self, dirs):
-        """Створює всі папки, включно з порожніми."""
+        """Creates all folders, including empty ones."""
         for d in self.dests:
             for rel in dirs:
                 if not d.alive:
@@ -226,7 +226,7 @@ class _Copy:
             self.finish_one(d, rel, path, out, digest, st, src)
 
     def stream(self, rel, src, targets, attempt):
-        """Читає source один раз і пише ті самі байти в tmp кожного dest. None — source не прочитався."""
+        """Reads the source once and writes the same bytes to tmp in every dest. None means the source could not be read."""
         try:
             f = open(src, "rb", buffering=0)
         except OSError as e:
@@ -256,7 +256,7 @@ class _Copy:
                             self.fail(d, rel, e, attempt)
                     pos += len(chunk)
                     self.progress(pos)
-            except OSError as e:  # помилка читання source посеред файла
+            except OSError as e:  # source read error in the middle of a file
                 for path, out in tmps.values():
                     _drop(path, out)
                 self.incident(rel, None, _source_reason(e), attempt, e)
@@ -265,7 +265,7 @@ class _Copy:
         return h.hexdigest(), st, tmps, stable
 
     def finish_one(self, d, rel, tmp, out, digest, st, src):
-        """fsync, перечитування з диска, один повтор при розбіжності, атомарний rename."""
+        """fsync, read back from disk, one retry on mismatch, atomic rename."""
         attempts = 1
         times = (st.st_atime_ns, st.st_mtime_ns)
         try:
@@ -294,7 +294,7 @@ class _Copy:
         d.entries.append({"rel_path": rel, "size": st.st_size, "mtime_utc": utc(st.st_mtime),
                           "xxhash64_hex": digest, "copied_at_utc": utc()})
 
-    # --- завершення: ledger, звіти, вердикт
+    # --- finish: ledger, reports, verdict
 
     def finish(self, rels, links, system, started) -> dict:
         ok_sets = [{e["rel_path"] for e in d.entries} for d in self.dests]
@@ -376,7 +376,7 @@ class _Copy:
             d.reports_written = False
             self.fail(d, REPORT_TXT, e, 1)
 
-    # --- дрібниці
+    # --- helpers
 
     def src(self, rel):
         root = lp(self.source)
@@ -388,7 +388,7 @@ class _Copy:
     def fail(self, d, rel, exc, attempts):
         reason = classify(exc, d.root)
         self.incident(rel, d, reason, attempts, exc)
-        if reason in ("yanked", "disk_full"):  # далі в цей диск не пишемо: решта файлів — інцидент без спроб
+        if reason in ("yanked", "disk_full"):  # stop writing to this drive: remaining files become incidents without attempts
             d.alive = False
             d.dead_reason = reason
 
@@ -407,7 +407,7 @@ class _Copy:
 
 
 def _rewrite(src, tmp) -> str:
-    """Повторний запис tmp із source для одного dest; повертає xxh64 прочитаного source."""
+    """Rewrites tmp from the source for one dest; returns the xxh64 of the source read."""
     h = xxhash.xxh64()
     with open(src, "rb", buffering=0) as f, open(tmp, "wb") as out:
         while chunk := f.read(CHUNK):
@@ -419,7 +419,7 @@ def _rewrite(src, tmp) -> str:
 
 
 def _drop(path, out=None):
-    """Прибирає tmp. Якщо диск уже зник, tmp лишиться — його прибере наступний запуск."""
+    """Removes tmp. If the drive is already gone, tmp stays and the next run cleans it up."""
     if out is not None:
         try:
             out.close()
@@ -432,7 +432,7 @@ def _drop(path, out=None):
 
 
 def _remove_stale_tmps(root):
-    """Видаляє в dest тільки наші tmp з точною маскою .vaultdrop-tmp-<16 hex>."""
+    """Deletes only our own tmp files in dest, matching exactly .vaultdrop-tmp-<16 hex>."""
     for dirpath, dirs, names in os.walk(root):
         dirs[:] = [name for name in dirs if not os.path.islink(os.path.join(dirpath, name))
                    and not os.path.isjunction(os.path.join(dirpath, name))]

@@ -25,7 +25,6 @@ const server = http.createServer((req,res) => {
     testHost.calls.push({command,args});
     switch(command){
      case 'locales':return locales;
-     case 'system_langs':return ['uk-UA','uk-UA'];
      case 'drive_mask':return 7;
      case 'list_drives':return [{root:'C:\\',label:'Windows',fs:'NTFS',total:512*2**30,free:185*2**30,system:true,disk:0},{root:'D:\\',label:'Samsung T7',fs:'exFAT',total:1e12,free:724*2**30,usb:true,disk:1},{root:'E:\\',label:'Archive',fs:'NTFS',total:2e12,free:1.3e12,disk:2}];
      case 'pick_folder':return testHost.picks.shift()||null;
@@ -43,7 +42,7 @@ const server = http.createServer((req,res) => {
        if(scenario==='running')return;
        if(scenario==='crash'){emit('cli-exit',-1);return;}
        setTimeout(()=>{
-        const event=args.args[0]==='verify'?{result:{result:scenario==='incomplete'?'INCOMPLETE':'INTACT',intact:1248,changed:0,missing:0,unreadable:0,run_verdict:scenario==='incomplete'?'FAIL':'SAFE TO FORMAT'}}:{report:{verdict:'SAFE TO FORMAT',ok:1248,total:1248,bytes_read:12.4*2**30,seconds:150,dests:['D:\\VaultDrop Backups\\Фото та документи']}};
+        const event=args.args[0]==='verify'?{result:{result:scenario==='incomplete'?'INCOMPLETE':'INTACT',intact:1248,changed:0,missing:0,unreadable:0,run_verdict:scenario==='incomplete'?'FAIL':'SAFE TO FORMAT'}}:{report:{verdict:'SAFE TO FORMAT',ok:1248,total:1248,bytes_read:12.4*2**30,seconds:150,dests:['D:\\VaultDrop Backups\\Photos and documents']}};
         emit('cli-line',JSON.stringify({event:'done',...event,text:'Operation result'}));emit('cli-exit',scenario==='incomplete'?1:0);
        },60);
       },30);return;
@@ -55,14 +54,14 @@ const server = http.createServer((req,res) => {
   await page.goto('http://127.0.0.1:'+server.address().port);
   await page.waitForFunction(()=>document.querySelectorAll('.drive').length===3);
   assert(await page.locator('#start').isDisabled());
-  assert.equal(await page.locator('html').getAttribute('lang'),'uk');
-  await page.evaluate(()=>testHost.picks.push('C:\\Users\\Олена\\Фото та документи'));
+  assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  await page.evaluate(()=>testHost.picks.push('C:\\Users\\Alex\\Photos and documents'));
   await page.click('#pick-source');await page.waitForFunction(()=>document.querySelector('#plan-files').textContent.includes('248'));
   await page.locator('.drive').filter({hasText:'Samsung T7'}).click();assert(await page.locator('#start').isEnabled());
   const shots=path.join(root,'../docs/screenshots');fs.mkdirSync(shots,{recursive:true});
-  const shot=name=>page.screenshot({path:path.join(shots,name+'-uk.png'),fullPage:true});
+  const shot=name=>page.screenshot({path:path.join(shots,name+'-en.png'),fullPage:true});
   await shot('backup');
-  for(const lang of ['en','de','pl','es','fr','uk']){
+  for(const lang of ['uk','de','pl','es','fr','en']){
    await page.selectOption('#lang',lang);assert.equal(await page.locator('html').getAttribute('lang'),lang);
    assert.equal(await page.locator('[data-i18n]').evaluateAll(ns=>ns.filter(n=>n.textContent.startsWith('ui.')).length),0);
   }
@@ -71,10 +70,10 @@ const server = http.createServer((req,res) => {
   await page.click('#start');await page.waitForSelector('#result-card.ok');await shot('result');
   await page.click('#done');await page.click('#tab-verify');await page.waitForSelector('.empty-state');await shot('verify');
   await page.evaluate(()=>{testHost.scenario='incomplete';testHost.picks.push('D:\\Backup');});
-  await page.click('#pick-backup');await page.waitForSelector('#result-card.warn');assert((await page.locator('#result-title').textContent()).includes('неповна'));
+  await page.click('#pick-backup');await page.waitForSelector('#result-card.warn');assert((await page.locator('#result-title').textContent()).includes('incomplete'));
   await page.click('#done');await page.click('#tab-copy');await page.evaluate(()=>{testHost.scenario='running';});
   await page.click('#start');await page.waitForFunction(()=>document.querySelector('#progress-percent').textContent!=='0%');assert(await page.locator('#tab-copy').isDisabled());await shot('progress');
-  await page.click('#stop-run');await page.waitForSelector('#result-card.warn');assert((await page.locator('#result-title').textContent()).includes('зупинено'));
+  await page.click('#stop-run');await page.waitForSelector('#result-card.warn');assert((await page.locator('#result-title').textContent()).includes('stopped'));
   await page.click('#done');await page.evaluate(()=>{testHost.scenario='crash';});
   await page.click('#start');await page.waitForSelector('#result-card.bad');assert((await page.locator('#result-text').textContent()).includes('-1'));
   await page.click('#done');await page.evaluate(()=>testHost.picks.push('C:\\missing'));

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vaultdrop"
 version = "0.2.0"
-description = "Офлайн верифікований бекап для Windows"
+description = "Offline verified backup for Windows"
 requires-python = ">=3.12"
 dependencies = ["xxhash>=3"]
 
@@ -24,5 +24,5 @@ vaultdrop = ["locales/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src-core"]
-# Тимчасові дані тестів — на D: у проекті, не в C:\...\Temp.
+# Test temp data stays inside the project, not in C:\...\Temp.
 addopts = "--basetemp=.tmp/pytest -p no:cacheprovider"

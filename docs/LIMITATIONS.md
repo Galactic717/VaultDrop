@@ -1,44 +1,44 @@
-# VaultDrop 0.2.0 — обмеження
+# VaultDrop 0.2.0 — limitations
 
-## Межі продукту
+## Product scope
 
-- Windows x64. Перевірено на Windows 11; Windows 10 ще не перевірено. Потрібен WebView2.
-- Копіювання папки на один чи два локальні диски та перевірка створеної копії. Мережеві UNC-шляхи не підтримуються.
-- Кожен запуск копіює файли заново. Інкрементальності, докачування, дедуплікації, стиснення, шифрування, хмари й планувальника немає.
-- Це копіювання файлів, а не образ диска, системний backup або VSS-знімок. Зайняті файли чи файли, що змінюються, можуть не скопіюватися; результат це відображає.
-- Не зберігаються ACL, ADS, дата створення й атрибути hidden/read-only. Час зміни файла зберігається.
-- Symlink і junction джерела пропускаються та рахуються у звіті. Вони не роблять звичайну копію автоматично неуспішною. У призначенні такі записи не використовуються для запису або перевірки файлів.
-- Порожні папки створюються, але verify перевіряє лише файли з опису. Зайві файли у призначенні не видаляються й не перевіряються.
-- Регістрозалежні Windows/WSL-папки з одночасними `A.txt` та `a.txt` не підтримуються.
-- Службові імена VaultDrop в корені джерела заборонені. Корінь уже створеної копії не можна використати як нове джерело.
+- Windows x64. Tested on Windows 11; Windows 10 has not been tested yet. WebView2 is required.
+- Copies a folder to one or two local drives and verifies the resulting backup. Network UNC paths are not supported.
+- Every run copies the files again. There is no incremental mode, resume, deduplication, compression, encryption, cloud or scheduler.
+- This is a file copy, not a disk image, system backup or VSS snapshot. Files that are in use or changing may not be copied; the result reports this.
+- ACLs, alternate data streams, creation time and the hidden/read-only attributes are not preserved. Modification time is preserved.
+- Symlinks and junctions in the source are skipped and counted in the report. They do not by themselves make an otherwise normal backup fail. In the destination, such entries are never used to write or verify files.
+- Empty folders are created, but verify checks only the files listed in the index. Extra files in the destination are neither deleted nor checked.
+- Case-sensitive Windows/WSL folders that contain both `A.txt` and `a.txt` are not supported.
+- VaultDrop service names are not allowed in the source root. The root of an existing backup cannot be used as a new source.
 
-## Межі перевірки
+## Verification scope
 
-- xxHash64 виявляє випадкове псування. Це не криптографічна автентифікація файлів або опису.
-- `fsync` і `FILE_FLAG_NO_BUFFERING` обходять кеш Windows, але не доводять фізичний запис із кешу контролера носія у flash-пам’ять.
-- Дані можуть пошкодитися після успішної перевірки. Зберігай незалежну копію важливих файлів і використовуй безпечне видалення пристрою.
-- Джерело не заморожується. Запис у файл зі збереженням розміру й mtime, а також зміни набору файлів після початкового сканування можуть лишитися непоміченими. Перед копіюванням закривай програми, що змінюють ці файли.
-- Перевірки шляхів відхиляють наявні небезпечні посилання й виходи за межі копії. Це не захист від ворожого процесу, який одночасно підмінює дерево каталогів між перевіркою та операцією I/O.
-- Опис і його checksum записуються окремими атомарними замінами. Після обриву між ними опис може не пройти перевірку; потрібно повторити копіювання.
-- Службовий файл `.vaultdrop.lock` залишається у копії. Сам файл не означає активної операції; OS-блокування знімається після завершення/краху процесу.
-- Два процеси не можуть одночасно записувати в те саме призначення. Перевірку копії не варто запускати під час її оновлення.
+- xxHash64 detects accidental corruption. It is not cryptographic authentication of the files or the index.
+- `fsync` and `FILE_FLAG_NO_BUFFERING` bypass the Windows cache, but they do not prove that the drive controller has flushed its own cache to flash memory.
+- Data can still be damaged after a successful check. Keep an independent copy of important files and use Safely Remove Hardware.
+- The source is not frozen. A write that keeps the file size and mtime, and changes to the set of files after the initial scan, may go unnoticed. Close programs that modify these files before copying.
+- Path checks reject existing dangerous links and escapes outside the backup. They do not protect against a hostile process that swaps the directory tree between the check and the I/O operation.
+- The index and its checksum are written with separate atomic replacements. If the run is interrupted between them, the index may fail verification; run the copy again.
+- The `.vaultdrop.lock` service file stays in the backup. The file itself does not mean an operation is active; the OS lock is released when the process finishes or crashes.
+- Two processes cannot write to the same destination at the same time. Do not verify a backup while it is being updated.
 
-## Ще не перевірено на реальному обладнанні
+## Not yet tested on real hardware
 
-- Фізичне від’єднання USB під час запису: тести імітують відмову ОС, але не зависання конкретного драйвера.
-- Поведінка FAT32 на реальному носії. Ядро відхиляє файл понад 4 GiB − 1 байт за відомим типом файлової системи.
-- Швидкість на окремих USB-носіях, деградованих дисках, RAID і Storage Spaces.
-- Встановлення й видалення через NSIS на чистій Windows 10/11. Інсталятор зібрано; packaged GUI і sidecar тестуються окремо.
-- Переклади pl/de/es/fr не перевірені носіями мови. Автотести перевіряють ключі й плейсхолдери, браузерний тест — перемикання та відсутність нерозв’язаних ключів.
+- Physically unplugging a USB drive during a write: tests simulate an OS failure, but not a specific driver hanging.
+- FAT32 behaviour on a real drive. The core rejects files larger than 4 GiB − 1 byte when the file system type is known.
+- Speed on specific USB drives, degraded disks, RAID and Storage Spaces.
+- Installing and uninstalling via NSIS on a clean Windows 10/11. The installer is built; the packaged GUI and the sidecar are tested separately.
+- The pl/de/es/fr translations have not been reviewed by native speakers. Automated tests check keys and placeholders; the browser test checks language switching and that no untranslated keys remain.
 
-## Практичні нюанси
+## Practical notes
 
-- Копія за замовчуванням лежить у `<диск>:\VaultDrop Backups\<назва джерела>`. Перед заміною копії іншого джерела застосунок попереджає; CLI слід запускати з правильно обраним `--to`.
-- Локальна історія знайдених копій містить до 20 шляхів. Звіти в копії перезаписуються; довготривалої історії версій немає.
-- Сканування у UI є попереднім. Авторитетний перелік файлів визначає ядро перед копіюванням.
-- На `subst` не завжди визначається фізичний диск або USB-шина.
-- `disk_full` припиняє подальший запис у відповідне призначення.
-- CLI `--dest` розділяє шляхи комами. Для шляху з комою використовуй `--to`.
-- PyInstaller `--onefile` розпаковує ядро до `%TEMP%` на час запуску.
-- Бінарні файли й інсталятор не підписані. Це може спричинити попередження SmartScreen.
-- Tauri повідомляє про відсутність частини власних NSIS-повідомлень польською. Переклади самого застосунку польською присутні.
+- By default the backup goes to `<drive>:\VaultDrop Backups\<source name>`. The app warns before replacing a backup of a different source; with the CLI, make sure `--to` points to the right folder.
+- The local history of found backups keeps up to 20 paths. Reports in the backup are overwritten; there is no long-term version history.
+- The scan in the UI is a preview. The authoritative file list is built by the core right before copying.
+- On `subst` drives the physical disk or the USB bus cannot always be detected.
+- `disk_full` stops further writes to that destination.
+- The CLI `--dest` option splits paths on commas. For a path that contains a comma, use `--to`.
+- PyInstaller `--onefile` unpacks the core to `%TEMP%` while it runs.
+- The binaries and the installer are not code-signed, which may trigger a SmartScreen warning.
+- Tauri reports that some of its own NSIS messages are missing in Polish. The app's own Polish translation is complete.

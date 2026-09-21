@@ -1,9 +1,8 @@
-"""Переклади й локальні формати. Рядки лежать у locales/<мова>.json, спільних для ядра й інтерфейсу.
+"""Translations and locale formats. Strings live in locales/<lang>.json, shared by the core and the UI.
 
-Нова мова = новий JSON з тими самими ключами, що й en.json (+ рядок у src-app/src-tauri/src/main.rs).
+New language = a new JSON file with the same keys as en.json (+ one line in src-app/src-tauri/src/main.rs).
 """
 
-import ctypes
 import json
 import os
 from datetime import datetime, timezone
@@ -18,25 +17,10 @@ def available() -> list[str]:
     return sorted(name[:-5] for name in os.listdir(LOCALES_DIR) if name.endswith(".json"))
 
 
-def detect() -> str:
-    """Мова Windows. Якщо інтерфейс англійський, а регіональний формат — інша підтримувана мова,
-    беремо регіон: англійський інтерфейс часто стоїть за замовчуванням, а регіон людина обирає сама."""
-    k32 = ctypes.WinDLL("kernel32")
-    buf = ctypes.create_unicode_buffer(85)
-    ui = buf.value if k32.LCIDToLocaleName(k32.GetUserDefaultUILanguage(), buf, 85, 0) else ""
-    region = buf.value if k32.GetUserDefaultLocaleName(buf, 85) else ""
-    langs = available()
-    for name in ([region, ui] if ui.lower().startswith("en") else [ui, region]):
-        code = name.split("-")[0].lower()
-        if code in langs:
-            return code
-    return FALLBACK
-
-
 def load(lang: str | None = None) -> str:
-    """Вмикає мову (None — мова Windows); ключі, яких нема в перекладі, беруться з англійської."""
+    """Switches the language (None means English); keys missing from a translation fall back to English."""
     global _strings, current
-    code = (lang or detect()).split("-")[0].lower()
+    code = (lang or FALLBACK).split("-")[0].lower()
     if code not in available():
         code = FALLBACK
     strings = _read(FALLBACK)
@@ -69,7 +53,7 @@ def fmt_duration(seconds: float) -> str:
 
 
 def fmt_time(iso_utc: str | None) -> str:
-    """ISO-час UTC зі звіту -> місцевий час у форматі мови."""
+    """ISO UTC time from a report -> local time in the language's format."""
     if not iso_utc:
         return "?"
     moment = datetime.strptime(iso_utc, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone()

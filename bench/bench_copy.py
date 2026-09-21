@@ -1,7 +1,7 @@
-"""Заміри copy на синтетичних даних: 1 файл 256 MiB (1 і 2 копії) і 1000 файлів по 16 KiB.
+"""Copy benchmarks on synthetic data: one 256 MiB file (1 and 2 copies) and 1000 files of 16 KiB.
 
-Запуск з кореня проекту:  .venv\\Scripts\\python bench\\bench_copy.py [папка_для_копій]
-Без аргументу копії йдуть у .tmp\\bench\\dest (той самий диск). Дані створюються в .tmp\\bench і стираються.
+Run from the project root:  .venv\\Scripts\\python bench\\bench_copy.py [backup_folder]
+Without an argument, copies go to .tmp\\bench\\dest (same drive). Data is created in .tmp\\bench and deleted afterwards.
 """
 
 import os
@@ -18,7 +18,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".tmp", "be
 
 
 def drop_cache(folder):
-    """Читання з NO_BUFFERING скидає кеш файла (виміряно в P0), тож copy читатиме source з диска, а не з RAM."""
+    """Reading with NO_BUFFERING drops the file from the cache (measured in P0), so copy reads the source from disk, not RAM."""
     for dirpath, _, names in os.walk(lp(folder)):
         for name in names:
             hash_unbuffered(os.path.join(dirpath, name))
@@ -28,8 +28,8 @@ def measure(label, source, dests):
     drop_cache(source)
     r = run_copy(source, dests)
     assert r["verdict"] == "SAFE TO FORMAT", r
-    print(f"{label}: {r['total']} файлів, {r['bytes_read'] / MB:.0f} MiB за {r['seconds']} с -> "
-          f"{r['mb_per_s']} MB/s, {r['total'] / max(r['seconds'], 0.001):.0f} файлів/с")
+    print(f"{label}: {r['total']} files, {r['bytes_read'] / MB:.0f} MiB in {r['seconds']} s -> "
+          f"{r['mb_per_s']} MB/s, {r['total'] / max(r['seconds'], 0.001):.0f} files/s")
     for d in dests:
         shutil.rmtree(lp(d))
 
@@ -47,14 +47,14 @@ def main():
     for i in range(1000):
         with open(os.path.join(small, f"s{i:04}.bin"), "wb") as f:
             f.write(block[i * 16384:(i + 1) * 16384])
-    # Стираємо тільки власні папки з унікальними іменами; чужі не чіпаємо навіть за збігу імені.
+    # Delete only our own uniquely named folders; never touch anything else, even on a name clash.
     a, b = (os.path.join(dest_root, f"vaultdrop-bench-{x}") for x in "ab")
     if os.path.exists(a) or os.path.exists(b):
-        sys.exit(f"{a} або {b} уже існує — прибери вручну")
+        sys.exit(f"{a} or {b} already exists, remove it manually")
     try:
-        measure("256 MiB -> 1 копія     ", big, [a])
-        measure("256 MiB -> 2 копії     ", big, [a, b])
-        measure("1000 x 16 KiB -> 1 копія", small, [a])
+        measure("256 MiB -> 1 copy      ", big, [a])
+        measure("256 MiB -> 2 copies    ", big, [a, b])
+        measure("1000 x 16 KiB -> 1 copy ", small, [a])
     finally:
         shutil.rmtree(lp(ROOT), ignore_errors=True)
 

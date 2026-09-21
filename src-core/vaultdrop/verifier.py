@@ -1,4 +1,4 @@
-"""Verify: перечитує копію з диска в обхід кешу і порівнює кожен файл із ledger. У target нічого не пише."""
+"""Verify: reads the backup back from disk bypassing the cache and compares every file with the ledger. Never writes to target."""
 
 import os
 import stat
@@ -12,7 +12,7 @@ from .winio import classify, hash_unbuffered, lp
 
 
 def run_verify(target: str, emit=lambda event: None) -> dict:
-    """Перевіряє копію. VaultDropError — ledger відсутній чи пошкоджений або диск зник посеред перевірки."""
+    """Verifies a backup. VaultDropError if the ledger is missing or damaged, or the drive disappears mid-check."""
     target = os.path.abspath(target)
     doc = ledger.read(target)
     root = lp(target)

@@ -1,4 +1,4 @@
-"""Тести приймання copy: (a) обрив dest, (d) 0 байт + кирилиця + довгий шлях, (e) locked, плюс гілки retry."""
+"""Copy acceptance tests: (a) dest failure, (d) 0 bytes + non-ASCII + long path, (e) locked, plus retry branches."""
 
 import ctypes
 import itertools
@@ -28,7 +28,7 @@ def tmp_leftovers(dest):
 
 
 class Yanked:
-    """Файл на флешці, яку висмикнули: після `limit` байтів запис падає з WinError 1167."""
+    """A file on an unplugged USB drive: after `limit` bytes, writes fail with WinError 1167."""
 
     def __init__(self, f, limit):
         self.f, self.left = f, limit
@@ -57,7 +57,7 @@ def test_yank(dirs, monkeypatch):
         assert read(d1, name) == read(src, name)
     assert read(d2, "a.bin") == read(src, "a.bin")
     assert not exists(d2, "b.bin") and not exists(d2, "c.bin")
-    assert exists(d2, RUNNING)  # наступний запуск побачить обрив і прибере tmp
+    assert exists(d2, RUNNING)  # the next run will see the interruption and clean up tmp
     assert not exists(d2, ".vaultdrop.json")
     yanked = [i for i in incidents(d1) if i["reason"] == "yanked"]
     assert [(i["rel_path"], i["dest"], i["attempts"]) for i in yanked] == [("b.bin", d2, 1), ("c.bin", d2, 0)]
@@ -67,9 +67,9 @@ def test_yank(dirs, monkeypatch):
 
 def test_edge_names(dirs):
     src, d1, _ = dirs
-    deep = "/".join(["довга папка з пробілами " + "я" * 30] * 5)
-    spec = {"empty.bin": b"", "Документи/звіт 2026 (фінал).txt": "привіт".encode(),
-            f"{deep}/глибокий файл.txt": os.urandom(5000)}
+    deep = "/".join(["long folder with spaces " + "é" * 30] * 5)
+    spec = {"empty.bin": b"", "Documents/report 2026 (final) café.txt": "héllo ✓".encode(),
+            f"{deep}/deep file ü.txt": os.urandom(5000)}
     make_tree(src, spec)
     stamp = 1_700_000_000
     for rel in spec:
@@ -94,7 +94,7 @@ def _open_exclusive(path):
     k32.CreateFileW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
                                 wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
     k32.CloseHandle.argtypes = (wintypes.HANDLE,)
-    handle = k32.CreateFileW(lp(path), 0x80000000, 0, None, 3, 0, None)  # dwShareMode=0: нікого не пускає
+    handle = k32.CreateFileW(lp(path), 0x80000000, 0, None, 3, 0, None)  # dwShareMode=0: no one else can open it
     assert handle != ctypes.c_void_p(-1).value
     return lambda: k32.CloseHandle(handle)
 
@@ -103,7 +103,7 @@ def test_locked(dirs):
     src, d1, d2 = dirs
     make_tree(src, {"a.txt": b"ok", "range.db": os.urandom(65536), "exclusive.db": os.urandom(100)})
     locker = open(lp(os.path.join(src, "range.db")), "r+b")
-    msvcrt.locking(locker.fileno(), msvcrt.LK_NBLCK, 65536)  # так тримають файли SQLite / Lightroom
+    msvcrt.locking(locker.fileno(), msvcrt.LK_NBLCK, 65536)  # this is how SQLite / Lightroom hold their files
     close_exclusive = _open_exclusive(os.path.join(src, "exclusive.db"))
     try:
         report = run_copy(src, [d1, d2])
@@ -129,7 +129,7 @@ def test_mismatch_retry(dirs, monkeypatch):
     real_hash = copier.hash_unbuffered
     calls = itertools.count()
     monkeypatch.setattr(copier, "hash_unbuffered", lambda p: "0" * 16 if next(calls) == 0 else real_hash(p))
-    assert run_copy(src, [d1])["verdict"] == "SAFE TO FORMAT"  # перший збіг не вдався, повтор урятував
+    assert run_copy(src, [d1])["verdict"] == "SAFE TO FORMAT"  # the first comparison failed, the retry saved it
 
     monkeypatch.setattr(copier, "hash_unbuffered", lambda p: "0" * 16)
     assert run_copy(src, [d2])["verdict"] == "FAIL"
@@ -154,27 +154,27 @@ def test_unstable_source(dirs, monkeypatch):
 def test_preflight_refuses(dirs):
     src, d1, _ = dirs
     with pytest.raises(VaultDropError):
-        run_copy(src, [d1])  # source нема
+        run_copy(src, [d1])  # source missing
     os.makedirs(src)
     with pytest.raises(VaultDropError):
-        run_copy(src, [d1])  # source порожній
+        run_copy(src, [d1])  # source empty
     make_tree(src, {"a.txt": b"a"})
     with pytest.raises(VaultDropError):
-        run_copy(src, [os.path.join(src, "inner")])  # копія всередині джерела
+        run_copy(src, [os.path.join(src, "inner")])  # backup inside the source
     with pytest.raises(VaultDropError):
         run_copy(src, [d1, d1])
     make_tree(src, {"vaultdrop-report.txt": b"user file"})
     with pytest.raises(VaultDropError):
-        run_copy(src, [d1])  # наш звіт перезаписав би файл користувача
+        run_copy(src, [d1])  # our report would overwrite the user's file
     assert not os.path.exists(d1)
     assert main(["copy", "--source", src, "--dest", d1, "--lang", "en"]) == 2
 
 
 def test_to_keeps_commas(dirs):
-    """Інтерфейс передає копії через --to: кома в назві папки не ділить шлях на два."""
+    """The UI passes destinations via --to: a comma in a folder name does not split the path in two."""
     src, d1, _ = dirs
     make_tree(src, {"a.txt": b"a"})
-    target = os.path.join(d1, "Фото, 2024")
+    target = os.path.join(d1, "Photos, 2024")
     assert main(["copy", "--source", src, "--to", target, "--lang", "en"]) == 0
     assert read(target, "a.txt") == b"a"
 

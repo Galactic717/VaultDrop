@@ -1,4 +1,4 @@
-"""Тести приймання verify: (b) 1 змінений байт -> changed, (c) видалений файл -> missing, пошкоджений ledger."""
+"""Verify acceptance tests: (b) one changed byte -> changed, (c) deleted file -> missing, damaged ledger."""
 
 import os
 
@@ -21,7 +21,7 @@ def backup(dirs):
 
 
 def snapshot(root):
-    """Імена, розміри й mtime усього в папці — verify не має змінити нічого."""
+    """Names, sizes and mtimes of everything in the folder: verify must change nothing."""
     return sorted((os.path.join(p, n), os.stat(os.path.join(p, n)).st_size, os.stat(os.path.join(p, n)).st_mtime_ns)
                   for p, _, names in os.walk(lp(root)) for n in names)
 

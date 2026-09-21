@@ -1,13 +1,13 @@
-﻿# Повна збірка релізу VaultDrop: тести -> vaultdrop.exe (PyInstaller) -> Tauri + NSIS -> dist\
-# Запуск з кореня проекту:  powershell -ExecutionPolicy Bypass -File build.ps1
+﻿# Full VaultDrop release build: tests -> vaultdrop.exe (PyInstaller) -> Tauri + NSIS -> dist\
+# Run from the project root:  powershell -ExecutionPolicy Bypass -File build.ps1
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
 $py = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path $py)) {
-    throw 'Нема .venv. Створи: <python 3.12> -m venv .venv; .venv\Scripts\python -m pip install -e .[dev]'
+    throw 'No .venv found. Create it: <python 3.12> -m venv .venv; .venv\Scripts\python -m pip install -e .[dev]'
 }
-# Кеші збірки — у проекті на D:, не в профілі на C:
+# Build caches live inside the project, not in the user profile
 $env:CARGO_HOME = Join-Path $PSScriptRoot '.cache\cargo'
 $env:npm_config_cache = Join-Path $PSScriptRoot '.cache\npm'
 $env:PIP_CACHE_DIR = Join-Path $PSScriptRoot '.cache\pip'
@@ -15,10 +15,10 @@ $env:PIP_CACHE_DIR = Join-Path $PSScriptRoot '.cache\pip'
 function Step($name, [scriptblock]$body) {
     Write-Host "== $name"
     & $body
-    if ($LASTEXITCODE) { throw "${name}: код виходу $LASTEXITCODE" }
+    if ($LASTEXITCODE) { throw "${name}: exit code $LASTEXITCODE" }
 }
 
-Step 'Тести' { & $py -m pytest -q }
+Step 'Tests' { & $py -m pytest -q }
 Step 'vaultdrop.exe (PyInstaller)' {
     & $py -m PyInstaller --noconfirm --log-level WARN --onefile --console --name vaultdrop --paths src-core `
         --add-data "$PSScriptRoot\src-core\vaultdrop\locales;vaultdrop\locales" `

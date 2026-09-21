@@ -1,4 +1,4 @@
-"""Командний рядок: vaultdrop copy / vaultdrop verify. Коди виходу: 0 — усе добре, 1 — є проблеми, 2 — не запустилось."""
+"""Command line: vaultdrop copy / vaultdrop verify. Exit codes: 0 - all good, 1 - problems found, 2 - failed to run."""
 
 import argparse
 import json
@@ -15,7 +15,7 @@ def main(argv=None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="backslashreplace")
-    # Мову треба знати ще до побудови --help, тому --lang читаємо окремим першим проходом.
+    # The language must be known before --help is built, so --lang is read in a separate first pass.
     early = argparse.ArgumentParser(add_help=False)
     early.add_argument("--lang")
     i18n.load(early.parse_known_args(argv)[0].lang)
@@ -27,7 +27,7 @@ def main(argv=None) -> int:
     copy = sub.add_parser("copy", help=t("cli.copy"))
     copy.add_argument("--source", required=True, help=t("cli.source"))
     copy.add_argument("--dest", help=t("cli.dest"))
-    # --to не ділиться за комою: так інтерфейс передає папки на кшталт «Фото, 2024».
+    # --to is not split on commas: this is how the UI passes folders such as "Photos, 2024".
     copy.add_argument("--to", action="append", default=[], help=t("cli.to"))
     verify = sub.add_parser("verify", help=t("cli.verify"))
     verify.add_argument("--target", required=True, help=t("cli.target"))
@@ -58,7 +58,7 @@ def _emit_json(event) -> None:
 
 
 class _Console:
-    """Людський вивід: прогрес та інциденти в stderr, підсумковий звіт у stdout."""
+    """Human-readable output: progress and incidents to stderr, the final report to stdout."""
 
     def __init__(self):
         self.files = 0

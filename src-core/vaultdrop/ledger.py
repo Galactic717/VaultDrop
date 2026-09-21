@@ -1,4 +1,4 @@
-"""Ledger .vaultdrop.json: що лежить у dest і з яким хешем. Плюс контрольна сума самого ledger."""
+"""Ledger .vaultdrop.json: what is in dest and with which hash, plus a checksum of the ledger itself."""
 
 import json
 import os
@@ -22,8 +22,8 @@ TMP_PREFIX = ".vaultdrop-tmp-"
 
 
 def utc(ts: float | None = None) -> str:
-    """Час UTC у форматі ISO 8601 до секунди: 2026-09-21T10:00:00Z."""
-    # Через timedelta, а не fromtimestamp: на Windows fromtimestamp падає на датах до 1970.
+    """UTC time in ISO 8601, to the second: 2026-09-21T10:00:00Z."""
+    # Via timedelta, not fromtimestamp: on Windows fromtimestamp fails for dates before 1970.
     moment = _EPOCH + timedelta(seconds=time.time() if ts is None else ts)
     return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -33,7 +33,7 @@ def tmp_name() -> str:
 
 
 def source_root_hash(hashes: dict) -> str:
-    """Відбиток знімка source: xxh64 від рядків `rel_path<TAB>size<TAB>xxh64` у порядку rel_path."""
+    """Fingerprint of the source snapshot: xxh64 over `rel_path<TAB>size<TAB>xxh64` lines sorted by rel_path."""
     h = xxhash.xxh64()
     for rel in sorted(hashes):
         size, digest = hashes[rel]
@@ -42,7 +42,7 @@ def source_root_hash(hashes: dict) -> str:
 
 
 def write(dest_root: str, meta: dict, entries: list) -> None:
-    """Пише ledger і його контрольну суму, кожен — через tmp, fsync і перечитування з диска."""
+    """Writes the ledger and its checksum, each via tmp, fsync and a read-back from disk."""
     doc = dict(meta, files=sorted(entries, key=lambda e: e["rel_path"]))
     data = json.dumps(doc, indent=1, ensure_ascii=True).encode("ascii")
     root = lp(dest_root)
@@ -52,7 +52,7 @@ def write(dest_root: str, meta: dict, entries: list) -> None:
 
 
 def write_verified(path: str, data: bytes) -> None:
-    """tmp -> fsync -> перечитування в обхід кешу -> атомарний replace."""
+    """tmp -> fsync -> uncached read-back -> atomic replace."""
     tmp = os.path.join(os.path.dirname(path), tmp_name())
     try:
         with open(tmp, "xb") as f:
@@ -71,7 +71,7 @@ def write_verified(path: str, data: bytes) -> None:
 
 
 def read(target: str) -> dict:
-    """Читає ledger і звіряє його контрольну суму. VaultDropError — ledger відсутній або пошкоджений."""
+    """Reads the ledger and checks its checksum. VaultDropError if the ledger is missing or damaged."""
     root = lp(target)
     try:
         with open(contained_path(root, SIDECAR), "rb") as f:

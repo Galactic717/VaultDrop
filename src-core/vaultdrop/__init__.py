@@ -1,7 +1,7 @@
-"""VaultDrop — офлайн верифікований бекап для Windows."""
+"""VaultDrop - offline verified backup for Windows."""
 
 __version__ = "0.2.0"
 
 
 class VaultDropError(Exception):
-    """Прогін неможливий: невірні шляхи, пошкоджений ledger або диск зник під час verify."""
+    """The run cannot proceed: invalid paths, a damaged ledger, or the drive disappeared during verify."""

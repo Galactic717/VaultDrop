@@ -1,4 +1,4 @@
-"""Windows-специфічне введення-виведення: довгі шляхи, читання в обхід кешу, класифікація помилок."""
+"""Windows-specific I/O: long paths, uncached reads, error classification."""
 
 import ctypes
 import errno
@@ -34,27 +34,27 @@ _ES_CONTINUOUS, _ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
 _k32.SetThreadExecutionState.restype = wintypes.DWORD
 _k32.SetThreadExecutionState.argtypes = (wintypes.DWORD,)
 
-# Буфер вирівняний на сторінку (4096 байт): FILE_FLAG_NO_BUFFERING вимагає вирівняних адреси й розміру читання.
-# Один буфер на процес — ядро однопотокове.
+# Page-aligned buffer (4096 bytes): FILE_FLAG_NO_BUFFERING requires an aligned address and read size.
+# One buffer per process: the core is single-threaded.
 _buf = mmap.mmap(-1, CHUNK)
 _buf_addr = ctypes.addressof(ctypes.c_char.from_buffer(_buf))
 _buf_view = memoryview(_buf)
 
-# Коди WinError, з якими диск вважаємо висмикнутим: NOT_READY, DEV_NOT_EXIST, NO_SUCH_DEVICE,
-# DEVICE_HARDWARE_ERROR, FILE_INVALID (том зник з-під відкритого файла), IO_DEVICE, DEVICE_NOT_CONNECTED.
+# WinError codes that mean the drive was unplugged: NOT_READY, DEV_NOT_EXIST, NO_SUCH_DEVICE,
+# DEVICE_HARDWARE_ERROR, FILE_INVALID (volume vanished under an open file), IO_DEVICE, DEVICE_NOT_CONNECTED.
 YANKED_WINERRORS = {21, 55, 433, 483, 1006, 1117, 1167}
 DISK_FULL_WINERRORS = {39, 112}
 
 
 def lp(path: str) -> str:
-    """Абсолютний шлях з префіксом \\\\?\\ — знімає ліміт 260 символів незалежно від налаштувань Windows."""
+    """Absolute path with the \\\\?\\ prefix: lifts the 260-character limit regardless of Windows settings."""
     if path.startswith("\\\\?\\"):
         return path
     return "\\\\?\\" + os.path.abspath(path)
 
 
 def read_unbuffered(path: str, consume) -> None:
-    """Читає файл із самого диска (FILE_FLAG_NO_BUFFERING), а не з кешу Windows; шматки віддає в consume."""
+    """Reads a file from the disk itself (FILE_FLAG_NO_BUFFERING), not the Windows cache; passes chunks to consume."""
     handle = _k32.CreateFileW(lp(path), _GENERIC_READ, _SHARE_READ_WRITE, None, _OPEN_EXISTING,
                               _NO_BUFFERING | _SEQUENTIAL_SCAN, None)
     if handle == _INVALID_HANDLE:
@@ -65,21 +65,21 @@ def read_unbuffered(path: str, consume) -> None:
             if not _k32.ReadFile(handle, _buf_addr, CHUNK, ctypes.byref(got), None):
                 raise _last_error(path)
             consume(_buf_view[:got.value])
-            if got.value < CHUNK:  # коротке читання = кінець файла; наступне зміщення вже не вирівняне
+            if got.value < CHUNK:  # short read = end of file; the next offset would no longer be aligned
                 return
     finally:
         _k32.CloseHandle(handle)
 
 
 def hash_unbuffered(path: str) -> str:
-    """xxh64 файла, прочитаного з диска в обхід кешу."""
+    """xxh64 of a file read from disk bypassing the cache."""
     h = xxhash.xxh64()
     read_unbuffered(path, h.update)
     return h.hexdigest()
 
 
 def volume_fs(path: str) -> str:
-    """Назва файлової системи тому: NTFS, exFAT, FAT32 або unknown."""
+    """File system name of the volume: NTFS, exFAT, FAT32 or unknown."""
     root = os.path.splitdrive(os.path.abspath(path))[0] + "\\"
     name = ctypes.create_unicode_buffer(64)
     if not _k32.GetVolumeInformationW(root, None, 0, None, None, None, name, 64):
@@ -89,7 +89,7 @@ def volume_fs(path: str) -> str:
 
 @contextmanager
 def keep_awake():
-    """Поки йде копіювання чи перевірка, Windows не засинає (екран згаснути може)."""
+    """Keeps Windows awake during copy or verify (the display may still turn off)."""
     _k32.SetThreadExecutionState(_ES_CONTINUOUS | _ES_SYSTEM_REQUIRED)
     try:
         yield
@@ -98,7 +98,7 @@ def keep_awake():
 
 
 def classify(exc: OSError, dest_root: str) -> str:
-    """Причина збою запису в dest: disk_full, yanked або io_error."""
+    """Reason for a write failure in dest: disk_full, yanked or io_error."""
     code = getattr(exc, "winerror", None)
     if code in DISK_FULL_WINERRORS or exc.errno == errno.ENOSPC:
         return "disk_full"
