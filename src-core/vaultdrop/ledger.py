@@ -90,14 +90,14 @@ def read(target: str) -> dict:
         if not isinstance(files, list):
             raise ValueError("files must be an array")
         seen = set()
-        for e in files:
-            key = relative_path(e["rel_path"]).casefold()
+        for entry in files:
+            key = relative_path(entry["rel_path"]).casefold()
             if key in seen:
                 raise ValueError("duplicate file path")
             seen.add(key)
-            if type(e["size"]) is not int or e["size"] < 0:
+            if type(entry["size"]) is not int or entry["size"] < 0:
                 raise ValueError("invalid file size")
-            if not isinstance(e["xxhash64_hex"], str) or not re.fullmatch(r"[0-9a-f]{16}", e["xxhash64_hex"]):
+            if not isinstance(entry["xxhash64_hex"], str) or not re.fullmatch(r"[0-9a-f]{16}", entry["xxhash64_hex"]):
                 raise ValueError("invalid xxHash64")
     except (ValueError, KeyError, TypeError) as e:
         raise VaultDropError(t("err.ledger_format", path=target, error=e)) from None
