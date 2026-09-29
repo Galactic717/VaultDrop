@@ -480,7 +480,7 @@ def _report_text(r, incidents, links, system) -> str:
     else:
         lines.append(t("rep.fail"))
         lines += [t("rep.no_ledger", dest=p["dest"]) for p in r["per_dest"] if not p["ledger_written"]]
-        by_reason = {}
+        by_reason: dict[str, list] = {}
         for i in incidents:
             by_reason.setdefault(i["reason"], []).append(i)
         for reason, items in by_reason.items():
